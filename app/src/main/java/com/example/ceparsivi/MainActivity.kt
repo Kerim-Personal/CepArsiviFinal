@@ -1,20 +1,40 @@
 package com.example.ceparsivi
 
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
+import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.RecyclerView
 
 class MainActivity : AppCompatActivity() {
+
+    // XML'deki elemanlar için değişkenleri burada tanımlıyoruz.
+    // Hatanın sebebi muhtemelen bu satırların eksik olmasıydı.
+    private lateinit var recyclerViewFiles: RecyclerView
+    private lateinit var textViewEmpty: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+
+        // Değişkenleri XML'deki ID'ler ile burada bağlıyoruz.
+        recyclerViewFiles = findViewById(R.id.recyclerViewFiles)
+        textViewEmpty = findViewById(R.id.textViewEmpty)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Şimdilik listeyi boş gösteriyoruz.
+        updateUI(isEmpty = true)
+    }
+
+    private fun updateUI(isEmpty: Boolean) {
+        if (isEmpty) {
+            recyclerViewFiles.visibility = View.GONE
+            textViewEmpty.visibility = View.VISIBLE
+        } else {
+            recyclerViewFiles.visibility = View.VISIBLE
+            textViewEmpty.visibility = View.GONE
         }
     }
 }
