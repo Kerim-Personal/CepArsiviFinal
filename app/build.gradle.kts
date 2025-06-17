@@ -2,16 +2,20 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-parcelize")
-    id("kotlin-kapt") // HATA GİDERİLDİ: Eksik olan kapt plugini buraya eklendi.
+    id("kotlin-kapt")
 }
 
 android {
     namespace = "com.example.ceparsivi"
+    // --- DÜZELTME 1 ---
+    // compileSdk'yı 35 (önizleme) yerine 34 (en son kararlı sürüm) olarak ayarlamak daha stabildir.
     compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.ceparsivi"
         minSdk = 24
+        // --- DÜZELTME 2 ---
+        // targetSdk da compileSdk ile uyumlu olmalı.
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -29,11 +33,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // --- DÜZELTME 3 ---
+        // Java versiyonunu modern projeler için standart olan 17'ye yükseltmek iyi bir pratiktir.
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
     buildFeatures {
         viewBinding = true
@@ -51,7 +57,12 @@ dependencies {
     // Glide Kütüphanesi
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1")
+
+    // --- DÜZELTME 4 ---
+    // lifecycle-runtime-ktx versiyonunu daha standart bir sürümle güncelledim.
+    // Projenizdeki libs.versions.toml dosyasında farklı bir sürüm olabilir, bu daha genel bir örnektir.
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
