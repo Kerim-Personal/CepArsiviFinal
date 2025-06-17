@@ -5,19 +5,19 @@
     <item
         android:id="@+id/action_toggle_view"
         android:icon="@drawable/ic_view_grid"
-        android:title="Görünümü Değiştir"
+        android:title="@string/menu_title_toggle_view"
         app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/action_sort"
         android:icon="@drawable/ic_sort"
-        android:title="Sırala"
+        android:title="@string/menu_title_sort"
         app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/action_search"
         android:icon="@drawable/ic_search"
-        android:title="Ara"
+        android:title="@string/menu_title_search"
         app:actionViewClass="androidx.appcompat.widget.SearchView"
         app:showAsAction="ifRoom|collapseActionView" />
 </menu>

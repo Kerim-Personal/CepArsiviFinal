@@ -1,5 +1,6 @@
 package com.example.ceparsivi
 
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8,12 +9,13 @@ import com.example.ceparsivi.databinding.BottomSheetFileDetailsBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import java.text.CharacterIterator
 import java.text.StringCharacterIterator
+import java.util.Locale
 
 class FileDetailsBottomSheet : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetFileDetailsBinding? = null
     private val binding get() = _binding!!
-    private lateinit var archivedFile: ArchivedFile
+    private var archivedFile: ArchivedFile? = null
 
     // MainActivity'nin dinleyeceği arayüz
     interface FileDetailsListener {
@@ -26,7 +28,13 @@ class FileDetailsBottomSheet : BottomSheetDialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            archivedFile = it.getParcelable("file")!!
+            // DÜZELTME: "getParcelable" için eski ve yeni versiyon uyumluluğu sağlandı
+            archivedFile = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                it.getParcelable("file", ArchivedFile::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                it.getParcelable("file")
+            }
         }
     }
 
@@ -41,23 +49,26 @@ class FileDetailsBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.textViewFileNameDetails.text = archivedFile.fileName
-        binding.textViewCategory.text = "Kategori: ${archivedFile.category}"
-        binding.textViewDate.text = "Tarih: ${archivedFile.dateAdded}"
-        binding.textViewSize.text = "Boyut: ${formatBytes(archivedFile.size)}"
+        archivedFile?.let { file ->
+            binding.textViewFileNameDetails.text = file.fileName
 
-        binding.buttonShare.setOnClickListener {
-            listener?.onShareClicked(archivedFile)
-            dismiss()
-        }
+            // DÜZELTME: Metinler artık strings.xml'den okunuyor
+            binding.textViewCategory.text = getString(R.string.details_category, file.category)
+            binding.textViewDate.text = getString(R.string.details_date, file.dateAdded)
+            binding.textViewSize.text = getString(R.string.details_size, formatBytes(file.size))
 
-        binding.buttonDelete.setOnClickListener {
-            listener?.onDeleteClicked(archivedFile)
-            dismiss()
-        }
+            binding.buttonShare.setOnClickListener {
+                listener?.onShareClicked(file)
+                dismiss()
+            }
+
+            binding.buttonDelete.setOnClickListener {
+                listener?.onDeleteClicked(file)
+                dismiss()
+            }
+        } ?: dismiss()
     }
 
-    // Dosya boyutunu okunabilir bir formata çevirir (KB, MB, GB)
     private fun formatBytes(bytes: Long): String {
         var a = bytes
         if (-1000 < a && a < 1000) {
@@ -68,7 +79,8 @@ class FileDetailsBottomSheet : BottomSheetDialogFragment() {
             a /= 1000
             ci.next()
         }
-        return String.format("%.1f %cB", a / 1000.0, ci.current())
+        // DÜZELTME: Locale (yerel ayar) bilgisi eklendi
+        return String.format(Locale.getDefault(), "%.1f %cB", a / 1000.0, ci.current())
     }
 
     override fun onDestroyView() {
