@@ -7,15 +7,13 @@ import android.util.Log
 import android.view.Menu
 import android.view.View
 import android.webkit.MimeTypeMap
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.appbar.MaterialToolbar
+import com.example.ceparsivi.databinding.ActivityMainBinding // View Binding sınıfını import ediyoruz
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -23,23 +21,25 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
 
-    // XML'deki yeni empty layout'u ekliyoruz
-    private lateinit var layoutEmpty: LinearLayout
-    private lateinit var recyclerViewFiles: RecyclerView
+    // --- DEĞİŞİKLİK: View Binding ---
+    // findViewById'lar yerine binding nesnesini kullanacağız.
+    private lateinit var binding: ActivityMainBinding
+    // --- DEĞİŞİKLİK SONU ---
+
     private lateinit var fileAdapter: ArchivedFileAdapter
-    private lateinit var toolbar: MaterialToolbar
     private val allFiles = mutableListOf<ArchivedFile>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        // --- DEĞİŞİKLİK: View Binding ---
+        // Layout'u inflate edip binding nesnesini oluşturuyoruz.
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        // Root view'i content view olarak ayarlıyoruz.
+        setContentView(binding.root)
+        // --- DEĞİŞİKLİK SONU ---
 
-        toolbar = findViewById(R.id.toolbar)
-        recyclerViewFiles = findViewById(R.id.recyclerViewFiles)
-        // Yeni boş ekran layout'unu bağlıyoruz
-        layoutEmpty = findViewById(R.id.layoutEmpty)
-
-        setSupportActionBar(toolbar)
+        // Toolbar'ı binding üzerinden ayarlıyoruz.
+        setSupportActionBar(binding.toolbar)
         setupRecyclerView()
     }
 
@@ -56,8 +56,8 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         return true
     }
 
-    // --- Diğer fonksiyonlar aynı kalıyor ---
     override fun onQueryTextSubmit(query: String?): Boolean = false
+
     override fun onQueryTextChange(newText: String?): Boolean {
         filterFiles(newText)
         return true
@@ -66,11 +66,11 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
     private fun setupRecyclerView() {
         fileAdapter = ArchivedFileAdapter(
             onItemClick = { file -> openFile(file) },
-            // Uzun basıldığında artık yeni seçenekler menüsünü çağırıyoruz
             onItemLongClick = { file -> showFileOptionsDialog(file) }
         )
-        recyclerViewFiles.adapter = fileAdapter
-        recyclerViewFiles.layoutManager = LinearLayoutManager(this)
+        // RecyclerView'e binding üzerinden erişiyoruz.
+        binding.recyclerViewFiles.adapter = fileAdapter
+        binding.recyclerViewFiles.layoutManager = LinearLayoutManager(this)
     }
 
     private fun loadArchivedFiles() {
@@ -81,14 +81,17 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
             if (!savedFiles.isNullOrEmpty()) {
                 val archivedFileList = savedFiles.map { file ->
                     val lastModifiedDate = Date(file.lastModified())
-                    val formattedDate = SimpleDateFormat("dd MMMM yyyy", Locale("tr"))
+                    // --- DEĞİŞİKLİK: Dinamik Lokal Kullanımı ---
+                    // Cihazın varsayılan diline göre tarih formatlanacak.
+                    val formattedDate = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
                         .format(lastModifiedDate)
+                    // --- DEĞİŞİKLİK SONU ---
                     ArchivedFile(file.name, file.absolutePath, formattedDate)
                 }.sortedByDescending { File(it.filePath).lastModified() }
                 allFiles.addAll(archivedFileList)
             }
         }
-        val searchView = toolbar.menu.findItem(R.id.action_search)?.actionView as? SearchView
+        val searchView = binding.toolbar.menu.findItem(R.id.action_search)?.actionView as? SearchView
         filterFiles(searchView?.query?.toString())
         updateUI(allFiles.isEmpty())
     }
@@ -102,34 +105,30 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         fileAdapter.submitList(filteredList)
     }
 
-    // updateUI fonksiyonunu yeni boş layout'u gösterecek şekilde güncelliyoruz
     private fun updateUI(isEmpty: Boolean) {
+        // View'lere binding üzerinden erişiyoruz.
         if (isEmpty) {
-            recyclerViewFiles.visibility = View.GONE
-            layoutEmpty.visibility = View.VISIBLE
+            binding.recyclerViewFiles.visibility = View.GONE
+            binding.layoutEmpty.visibility = View.VISIBLE
         } else {
-            recyclerViewFiles.visibility = View.VISIBLE
-            layoutEmpty.visibility = View.GONE
+            binding.recyclerViewFiles.visibility = View.VISIBLE
+            binding.layoutEmpty.visibility = View.GONE
         }
     }
 
-    // --- YENİ FONKSİYONLAR ---
-
-    // Uzun basıldığında seçenekleri (Paylaş, Sil) gösteren diyalog
     private fun showFileOptionsDialog(file: ArchivedFile) {
         val options = arrayOf("Yeniden Paylaş", "Sil")
         AlertDialog.Builder(this)
             .setTitle(file.fileName)
-            .setItems(options) { dialog, which ->
+            .setItems(options) { _, which ->
                 when (which) {
-                    0 -> shareFile(file) // "Yeniden Paylaş" seçildi
-                    1 -> showDeleteConfirmationDialog(file) // "Sil" seçildi
+                    0 -> shareFile(file)
+                    1 -> showDeleteConfirmationDialog(file)
                 }
             }
             .show()
     }
 
-    // Arşivdeki bir dosyayı paylaşan fonksiyon
     private fun shareFile(file: ArchivedFile) {
         val fileToShare = File(file.filePath)
         if (!fileToShare.exists()) {
@@ -154,14 +153,14 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         }
     }
 
-    // openFile ve deleteFile fonksiyonları aynı kalıyor...
     private fun openFile(file: ArchivedFile) {
         val fileToOpen = File(file.filePath)
         val authority = "${applicationContext.packageName}.provider"
         val fileUri = FileProvider.getUriForFile(this, authority, fileToOpen)
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.setDataAndType(fileUri, MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileToOpen.extension) ?: "*/*")
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(fileUri, MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileToOpen.extension) ?: "*/*")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
         try {
             startActivity(intent)
         } catch (e: ActivityNotFoundException) {
