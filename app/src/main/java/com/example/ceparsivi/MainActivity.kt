@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.FileProvider
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.ceparsivi.databinding.ActivityMainBinding
 import java.io.File
@@ -25,8 +26,9 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var fileAdapter: ArchivedFileAdapter
-    private val allListItems = mutableListOf<ListItem>()
     private var actionMode: ActionMode? = null
+    private var currentSortOrder = SortOrder.BY_DATE_DESC
+    private var currentViewMode = ViewMode.LIST
 
     private enum class SortOrder {
         BY_DATE_DESC,
@@ -35,7 +37,6 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         BY_SIZE_ASC,
         BY_SIZE_DESC
     }
-    private var currentSortOrder = SortOrder.BY_DATE_DESC
 
     private val categoryOrder = listOf(
         "Ofis Dosyaları",
@@ -67,6 +68,10 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
+
+        val viewToggleItem = menu.findItem(R.id.action_toggle_view)
+        viewToggleItem.setIcon(if (currentViewMode == ViewMode.LIST) R.drawable.ic_view_grid else R.drawable.ic_view_list)
+
         val searchItem = menu.findItem(R.id.action_search)
         val searchView = searchItem.actionView as? SearchView
         searchView?.setOnQueryTextListener(this)
@@ -74,11 +79,58 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_sort) {
-            showSortDialog()
-            return true
+        return when (item.itemId) {
+            R.id.action_sort -> {
+                showSortDialog()
+                true
+            }
+            R.id.action_toggle_view -> {
+                toggleViewMode()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
+    }
+
+    private fun toggleViewMode() {
+        currentViewMode = if (currentViewMode == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST
+        fileAdapter.viewMode = currentViewMode
+        setupLayoutManager()
+        invalidateOptionsMenu()
+    }
+
+    private fun setupLayoutManager() {
+        if (currentViewMode == ViewMode.LIST) {
+            binding.recyclerViewFiles.layoutManager = LinearLayoutManager(this)
+        } else {
+            val gridLayoutManager = GridLayoutManager(this, 3)
+            gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                override fun getSpanSize(position: Int): Int {
+                    return if (position < fileAdapter.currentList.size && fileAdapter.getItemViewType(position) == 0) 3 else 1
+                }
+            }
+            binding.recyclerViewFiles.layoutManager = gridLayoutManager
+        }
+    }
+
+    private fun showSortDialog() {
+        val sortOptions = arrayOf(
+            "Tarihe Göre (Yeniden Eskiye)",
+            "İsme Göre (A-Z)",
+            "İsme Göre (Z-A)",
+            "Boyuta Göre (Küçükten Büyüğe)",
+            "Boyuta Göre (Büyükten Küçüğe)"
+        )
+        val currentSelection = currentSortOrder.ordinal
+        AlertDialog.Builder(this)
+            .setTitle("Sıralama Ölçütü")
+            .setSingleChoiceItems(sortOptions, currentSelection) { dialog, which ->
+                currentSortOrder = SortOrder.entries[which]
+                updateFullList()
+                dialog.dismiss()
+            }
+            .setNegativeButton("İptal", null)
+            .show()
     }
 
     private fun updateFullList() {
@@ -106,9 +158,6 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         }
 
         val finalList = buildListWithHeaders(filteredFiles)
-        allListItems.clear()
-        allListItems.addAll(finalList)
-
         fileAdapter.submitList(finalList)
         updateUI(finalList.isEmpty())
     }
@@ -140,26 +189,6 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         return listWithHeaders
     }
 
-    private fun showSortDialog() {
-        val sortOptions = arrayOf(
-            "Tarihe Göre (Yeniden Eskiye)",
-            "İsme Göre (A-Z)",
-            "İsme Göre (Z-A)",
-            "Boyuta Göre (Küçükten Büyüğe)",
-            "Boyuta Göre (Büyükten Küçüğe)"
-        )
-        val currentSelection = currentSortOrder.ordinal
-        AlertDialog.Builder(this)
-            .setTitle("Sıralama Ölçütü")
-            .setSingleChoiceItems(sortOptions, currentSelection) { dialog, which ->
-                currentSortOrder = SortOrder.entries[which]
-                updateFullList()
-                dialog.dismiss()
-            }
-            .setNegativeButton("İptal", null)
-            .show()
-    }
-
     override fun onQueryTextChange(newText: String?): Boolean {
         updateFullList()
         return true
@@ -184,7 +213,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
             }
         )
         binding.recyclerViewFiles.adapter = fileAdapter
-        binding.recyclerViewFiles.layoutManager = LinearLayoutManager(this)
+        setupLayoutManager()
     }
 
     private fun toggleSelection(file: ArchivedFile) {
@@ -192,7 +221,6 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         val count = fileAdapter.getSelectedFileCount()
         if (count == 0) {
             actionMode?.finish()
-            fileAdapter.isSelectionMode = false
         } else {
             actionMode?.title = "$count öğe seçildi"
             actionMode?.invalidate()
@@ -211,10 +239,11 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         return true
     }
 
-    // --- DÜZELTME BURADA ---
     override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
-        // Hatanın düzeltildiği yer: getSelectedFiles fonksiyonuna `allListItems` gönderiliyor.
-        val selectedFiles = fileAdapter.getSelectedFiles(allListItems)
+        // --- DÜZELTME BURADA ---
+        // getSelectedFiles fonksiyonu artık doğru listeyi kullanıyor.
+        val selectedFiles = fileAdapter.getSelectedFiles(fileAdapter.currentList)
+
         return when (item.itemId) {
             R.id.action_delete -> {
                 showMultiDeleteConfirmationDialog(selectedFiles)

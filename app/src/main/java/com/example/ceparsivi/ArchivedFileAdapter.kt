@@ -8,48 +8,32 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ceparsivi.databinding.ItemFileBinding
+import com.example.ceparsivi.databinding.ItemFileGridBinding
 import com.example.ceparsivi.databinding.ItemHeaderBinding
 
+// Görünüm Tipleri
 private const val VIEW_TYPE_HEADER = 0
-private const val VIEW_TYPE_FILE = 1
+private const val VIEW_TYPE_FILE_LIST = 1
+private const val VIEW_TYPE_FILE_GRID = 2
+
+// Görünüm Modu
+enum class ViewMode {
+    LIST, GRID
+}
 
 class ArchivedFileAdapter(
     private val onItemClick: (ArchivedFile) -> Unit,
-    private val onItemLongClick: (ArchivedFile) -> Boolean // Geri dönüş tipi Boolean oldu
-) : ListAdapter<ListItem, RecyclerView.ViewHolder>(ListItemDiffCallback()) {
+    private val onItemLongClick: (ArchivedFile) -> Boolean
+) : ListAdapter<ListItem, RecyclerView.ViewHolder>(ListItemDiffCallback()) { // Hatanın olduğu satır
 
-    // --- YENİ: Seçimle ilgili kodlar ---
+    var viewMode: ViewMode = ViewMode.LIST
     private val selectedItems = mutableSetOf<String>()
     var isSelectionMode = false
-
-    fun toggleSelection(filePath: String) {
-        if (selectedItems.contains(filePath)) {
-            selectedItems.remove(filePath)
-        } else {
-            selectedItems.add(filePath)
-        }
-        notifyDataSetChanged() // Görünümü anında güncelle
-    }
-
-    fun getSelectedFileCount(): Int = selectedItems.size
-
-    fun getSelectedFiles(allItems: List<ListItem>): List<ArchivedFile> {
-        val files = allItems.filterIsInstance<ListItem.FileItem>().map { it.archivedFile }
-        return files.filter { selectedItems.contains(it.filePath) }
-    }
-
-    fun clearSelections() {
-        selectedItems.clear()
-        isSelectionMode = false
-        notifyDataSetChanged()
-    }
-    // --- Seçimle ilgili kodların sonu ---
-
 
     override fun getItemViewType(position: Int): Int {
         return when (getItem(position)) {
             is ListItem.HeaderItem -> VIEW_TYPE_HEADER
-            is ListItem.FileItem -> VIEW_TYPE_FILE
+            is ListItem.FileItem -> if (viewMode == ViewMode.LIST) VIEW_TYPE_FILE_LIST else VIEW_TYPE_FILE_GRID
         }
     }
 
@@ -57,41 +41,49 @@ class ArchivedFileAdapter(
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
             VIEW_TYPE_HEADER -> HeaderViewHolder(ItemHeaderBinding.inflate(inflater, parent, false))
-            VIEW_TYPE_FILE -> FileViewHolder(ItemFileBinding.inflate(inflater, parent, false))
+            VIEW_TYPE_FILE_LIST -> ListFileViewHolder(ItemFileBinding.inflate(inflater, parent, false))
+            VIEW_TYPE_FILE_GRID -> GridFileViewHolder(ItemFileGridBinding.inflate(inflater, parent, false))
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        when (val item = getItem(position)) {
-            is ListItem.HeaderItem -> (holder as HeaderViewHolder).bind(item)
-            is ListItem.FileItem -> (holder as FileViewHolder).bind(item.archivedFile, onItemClick, onItemLongClick, selectedItems.contains(item.archivedFile.filePath))
+        val isSelected = when (val item = getItem(position)) {
+            is ListItem.FileItem -> selectedItems.contains(item.archivedFile.filePath)
+            else -> false
+        }
+
+        when (holder) {
+            is HeaderViewHolder -> holder.bind((getItem(position) as ListItem.HeaderItem))
+            is ListFileViewHolder -> holder.bind((getItem(position) as ListItem.FileItem).archivedFile, onItemClick, onItemLongClick, isSelected)
+            is GridFileViewHolder -> holder.bind((getItem(position) as ListItem.FileItem).archivedFile, onItemClick, onItemLongClick, isSelected)
         }
     }
 
-    class FileViewHolder(private val binding: ItemFileBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(
-            file: ArchivedFile,
-            onClick: (ArchivedFile) -> Unit,
-            onLongClick: (ArchivedFile) -> Boolean,
-            isSelected: Boolean // Seçim durumu eklendi
-        ) {
+    class ListFileViewHolder(private val binding: ItemFileBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(file: ArchivedFile, onClick: (ArchivedFile) -> Unit, onLongClick: (ArchivedFile) -> Boolean, isSelected: Boolean) {
             binding.textViewFileName.text = file.fileName
             binding.textViewFileDate.text = file.dateAdded
             binding.imageViewFileType.setImageResource(getFileIcon(file))
-
-            // Görünümü seçim durumuna göre ayarla
-            if (isSelected) {
-                binding.root.setBackgroundColor(ContextCompat.getColor(itemView.context, android.R.color.darker_gray))
-            } else {
-                binding.root.setBackgroundColor(Color.TRANSPARENT)
-            }
-
+            binding.root.setBackgroundColor(if (isSelected) ContextCompat.getColor(itemView.context, android.R.color.darker_gray) else Color.TRANSPARENT)
             itemView.setOnClickListener { onClick(file) }
             itemView.setOnLongClickListener { onLongClick(file) }
         }
+    }
 
-        private fun getFileIcon(file: ArchivedFile): Int {
+    class GridFileViewHolder(private val binding: ItemFileGridBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(file: ArchivedFile, onClick: (ArchivedFile) -> Unit, onLongClick: (ArchivedFile) -> Boolean, isSelected: Boolean) {
+            binding.textViewFileNameGrid.text = file.fileName
+            binding.imageViewFileTypeGrid.setImageResource(getFileIcon(file))
+            binding.root.strokeWidth = if (isSelected) 8 else 0
+            binding.root.strokeColor = if (isSelected) ContextCompat.getColor(itemView.context, R.color.black) else Color.TRANSPARENT
+            itemView.setOnClickListener { onClick(file) }
+            itemView.setOnLongClickListener { onLongClick(file) }
+        }
+    }
+
+    companion object {
+        fun getFileIcon(file: ArchivedFile): Int {
             return when (file.category) {
                 "Ofis Dosyaları" -> when (file.fileName.substringAfterLast('.', "").lowercase()) {
                     "pdf" -> R.drawable.ic_file_pdf
@@ -107,6 +99,25 @@ class ArchivedFileAdapter(
         }
     }
 
+    fun toggleSelection(filePath: String) {
+        if (selectedItems.contains(filePath)) selectedItems.remove(filePath) else selectedItems.add(filePath)
+        notifyDataSetChanged()
+    }
+
+    fun getSelectedFileCount(): Int = selectedItems.size
+
+    fun getSelectedFiles(allItems: List<ListItem>): List<ArchivedFile> {
+        return allItems.filterIsInstance<ListItem.FileItem>()
+            .map { it.archivedFile }
+            .filter { selectedItems.contains(it.filePath) }
+    }
+
+    fun clearSelections() {
+        selectedItems.clear()
+        isSelectionMode = false
+        notifyDataSetChanged()
+    }
+
     class HeaderViewHolder(private val binding: ItemHeaderBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(header: ListItem.HeaderItem) {
             binding.textViewHeader.text = header.title
@@ -114,6 +125,7 @@ class ArchivedFileAdapter(
     }
 }
 
+// --- EKSİK OLAN VE HATAYA SEBEP OLAN SINIF BURASI ---
 class ListItemDiffCallback : DiffUtil.ItemCallback<ListItem>() {
     override fun areItemsTheSame(oldItem: ListItem, newItem: ListItem): Boolean {
         return when {
