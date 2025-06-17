@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -19,19 +21,12 @@ class SaveFileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         if (intent?.action == Intent.ACTION_SEND && intent.type != null) {
-
-            // --- DEĞİŞİKLİK BURADA ---
-            // Cihazın Android sürümünü kontrol ediyoruz
             val fileUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // Android 13 (API 33) ve üstü için yeni ve güvenli metot
                 intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
             } else {
-                // Eski versiyonlar için déprecated (eski) metot.
-                // @Suppress ile uyarıyı gizliyoruz çünkü bu uyumluluk için zorunlu.
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra(Intent.EXTRA_STREAM)
             }
-            // --- DEĞİŞİKLİK SONA ERDİ ---
 
             if (fileUri != null) {
                 val originalFileName = getFileName(fileUri)
@@ -46,15 +41,61 @@ class SaveFileActivity : AppCompatActivity() {
     }
 
     private fun showSaveDialog(fileUri: Uri, originalFileName: String) {
-        val editText = EditText(this)
-        editText.setText(originalFileName)
+        // --- YENİ EKLENEN BÖLÜM BAŞLANGICI ---
+
+        // 1. Dosya adını ve uzantısını ayırıyoruz.
+        val fileExtension = originalFileName.substringAfterLast('.', "")
+        val fileNameWithoutExtension = originalFileName.substringBeforeLast('.', originalFileName)
+
+        // 2. Dialog penceresi için özel bir görünüm oluşturuyoruz.
+        // Bu görünüm, dosya adı için bir EditText ve uzantı için bir TextView içerecek.
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(50, 40, 50, 0) // Görünümün kenarlarına boşluk ekliyoruz.
+        }
+
+        val editTextFileName = EditText(this).apply {
+            setText(fileNameWithoutExtension)
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1.0f // Genişliğin kalan tüm alanı kaplamasını sağlar.
+            )
+        }
+
+        val textViewExtension = TextView(this).apply {
+            text = if (fileExtension.isNotEmpty()) ".$fileExtension" else ""
+            textSize = 16f // Metin boyutunu EditText ile uyumlu hale getiriyoruz.
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                leftMargin = 8 // Uzantının soluna boşluk ekliyoruz.
+            }
+        }
+
+        // Oluşturduğumuz elemanları layout'a ekliyoruz.
+        layout.addView(editTextFileName)
+        if (fileExtension.isNotEmpty()) {
+            layout.addView(textViewExtension)
+        }
+
+        // --- YENİ EKLENEN BÖLÜM SONU ---
+
 
         AlertDialog.Builder(this)
             .setTitle("Dosyaya Bir İsim Ver")
-            .setView(editText)
+            // Eski EditText yerine yeni oluşturduğumuz özel layout'u kullanıyoruz.
+            .setView(layout)
             .setPositiveButton("Kaydet") { dialog, _ ->
-                val newName = editText.text.toString()
-                if (newName.isNotBlank()) {
+                val newBaseName = editTextFileName.text.toString().trim()
+                if (newBaseName.isNotBlank()) {
+                    // 3. Yeni dosya adını, kullanıcının girdiği isim ve orijinal uzantı ile birleştiriyoruz.
+                    val newName = if (fileExtension.isNotEmpty()) {
+                        "$newBaseName.$fileExtension"
+                    } else {
+                        newBaseName
+                    }
                     copyFileToInternalStorage(fileUri, newName)
                 } else {
                     Toast.makeText(this, "Lütfen geçerli bir isim girin.", Toast.LENGTH_SHORT).show()
