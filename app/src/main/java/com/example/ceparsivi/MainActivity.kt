@@ -13,7 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.ceparsivi.databinding.ActivityMainBinding // View Binding sınıfını import ediyoruz
+import com.example.ceparsivi.databinding.ActivityMainBinding
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -21,33 +21,124 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
 
-    // --- DEĞİŞİKLİK: View Binding ---
-    // findViewById'lar yerine binding nesnesini kullanacağız.
     private lateinit var binding: ActivityMainBinding
-    // --- DEĞİŞİKLİK SONU ---
-
     private lateinit var fileAdapter: ArchivedFileAdapter
-    private val allFiles = mutableListOf<ArchivedFile>()
+    private val allListItems = mutableListOf<ListItem>()
+
+    // --- YENİ: Kategori sıralamasını tanımlıyoruz ---
+    private val categoryOrder = listOf(
+        "Ofis Dosyaları",
+        "Resim Dosyaları",
+        "Video Dosyaları",
+        "Ses Dosyaları",
+        "Arşiv Dosyaları",
+        "Diğer Dosyalar"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // --- DEĞİŞİKLİK: View Binding ---
-        // Layout'u inflate edip binding nesnesini oluşturuyoruz.
         binding = ActivityMainBinding.inflate(layoutInflater)
-        // Root view'i content view olarak ayarlıyoruz.
         setContentView(binding.root)
-        // --- DEĞİŞİKLİK SONU ---
-
-        // Toolbar'ı binding üzerinden ayarlıyoruz.
         setSupportActionBar(binding.toolbar)
         setupRecyclerView()
     }
 
     override fun onResume() {
         super.onResume()
-        loadArchivedFiles()
+        loadAndCategorizeFiles()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        loadAndCategorizeFiles()
+    }
+
+    // --- GÜNCELLENDİ: Yeni kategoriler ve uzantılar eklendi ---
+    private fun getFileCategory(fileName: String): String {
+        return when (fileName.substringAfterLast('.', "").lowercase()) {
+            // Ofis Dosyaları
+            "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx" -> "Ofis Dosyaları"
+            // Resim Dosyaları
+            "jpg", "jpeg", "png", "webp", "gif", "bmp" -> "Resim Dosyaları"
+            // Video Dosyaları
+            "mp4", "mkv", "avi", "mov", "3gp", "webm" -> "Video Dosyaları"
+            // Ses Dosyaları
+            "mp3", "wav", "m4a", "aac", "flac", "ogg" -> "Ses Dosyaları"
+            // Arşiv Dosyaları
+            "zip", "rar", "7z", "tar", "gz" -> "Arşiv Dosyaları"
+            // Diğer
+            else -> "Diğer Dosyalar"
+        }
+    }
+
+    private fun loadAndCategorizeFiles() {
+        val archiveDir = File(filesDir, "arsiv")
+        val savedFiles = mutableListOf<ArchivedFile>()
+
+        if (archiveDir.exists() && archiveDir.isDirectory) {
+            archiveDir.listFiles()?.filter { it.isFile }?.forEach { file ->
+                val lastModifiedDate = Date(file.lastModified())
+                val formattedDate = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(lastModifiedDate)
+                val category = getFileCategory(file.name)
+                savedFiles.add(ArchivedFile(file.name, file.absolutePath, formattedDate, category))
+            }
+        }
+
+        // --- GÜNCELLENDİ: Dosyaları özel kategori sırasına göre sırala ---
+        val categoryOrderMap = categoryOrder.withIndex().associate { it.value to it.index }
+        val sortedFiles = savedFiles.sortedWith(
+            compareBy(
+                { categoryOrderMap[it.category] ?: categoryOrder.size }, // Önce tanımlı kategori sırasına göre
+                { -File(it.filePath).lastModified() } // Sonra eklenme tarihine göre
+            )
+        )
+
+        allListItems.clear()
+        var currentCategory = ""
+        if (sortedFiles.isNotEmpty()) {
+            sortedFiles.forEach { file ->
+                if (file.category != currentCategory) {
+                    currentCategory = file.category
+                    allListItems.add(ListItem.HeaderItem(currentCategory))
+                }
+                allListItems.add(ListItem.FileItem(file))
+            }
+        }
+
+        val searchView = binding.toolbar.menu.findItem(R.id.action_search)?.actionView as? SearchView
+        filterList(searchView?.query?.toString())
+        updateUI(allListItems.isEmpty())
+    }
+
+    private fun filterList(query: String?) {
+        val filteredList = if (query.isNullOrBlank()) {
+            allListItems
+        } else {
+            val filteredItems = mutableListOf<ListItem>()
+            val filesOnly = allListItems.filterIsInstance<ListItem.FileItem>()
+                .filter { it.archivedFile.fileName.contains(query, ignoreCase = true) }
+
+            val categoryOrderMap = categoryOrder.withIndex().associate { it.value to it.index }
+            val sortedFiles = filesOnly.sortedWith(
+                compareBy { categoryOrderMap[it.archivedFile.category] ?: categoryOrder.size }
+            )
+
+            var currentCategory = ""
+            sortedFiles.forEach { fileItem ->
+                if (fileItem.archivedFile.category != currentCategory) {
+                    currentCategory = fileItem.archivedFile.category
+                    filteredItems.add(ListItem.HeaderItem(currentCategory))
+                }
+                filteredItems.add(fileItem)
+            }
+            filteredItems
+        }
+        fileAdapter.submitList(filteredList)
+        updateUI(filteredList.isEmpty())
+    }
+
+    // Diğer fonksiyonlar (onCreateOptionsMenu, openFile, shareFile vb.) değişmeden kalır...
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         val searchItem = menu.findItem(R.id.action_search)
@@ -59,7 +150,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
     override fun onQueryTextSubmit(query: String?): Boolean = false
 
     override fun onQueryTextChange(newText: String?): Boolean {
-        filterFiles(newText)
+        filterList(newText)
         return true
     }
 
@@ -68,45 +159,11 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
             onItemClick = { file -> openFile(file) },
             onItemLongClick = { file -> showFileOptionsDialog(file) }
         )
-        // RecyclerView'e binding üzerinden erişiyoruz.
         binding.recyclerViewFiles.adapter = fileAdapter
         binding.recyclerViewFiles.layoutManager = LinearLayoutManager(this)
     }
 
-    private fun loadArchivedFiles() {
-        val archiveDir = File(filesDir, "arsiv")
-        allFiles.clear()
-        if (archiveDir.exists() && archiveDir.isDirectory) {
-            val savedFiles = archiveDir.listFiles()?.filter { it.isFile }
-            if (!savedFiles.isNullOrEmpty()) {
-                val archivedFileList = savedFiles.map { file ->
-                    val lastModifiedDate = Date(file.lastModified())
-                    // --- DEĞİŞİKLİK: Dinamik Lokal Kullanımı ---
-                    // Cihazın varsayılan diline göre tarih formatlanacak.
-                    val formattedDate = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
-                        .format(lastModifiedDate)
-                    // --- DEĞİŞİKLİK SONU ---
-                    ArchivedFile(file.name, file.absolutePath, formattedDate)
-                }.sortedByDescending { File(it.filePath).lastModified() }
-                allFiles.addAll(archivedFileList)
-            }
-        }
-        val searchView = binding.toolbar.menu.findItem(R.id.action_search)?.actionView as? SearchView
-        filterFiles(searchView?.query?.toString())
-        updateUI(allFiles.isEmpty())
-    }
-
-    private fun filterFiles(query: String?) {
-        val filteredList = if (query.isNullOrBlank()) {
-            allFiles
-        } else {
-            allFiles.filter { it.fileName.contains(query, ignoreCase = true) }
-        }
-        fileAdapter.submitList(filteredList)
-    }
-
     private fun updateUI(isEmpty: Boolean) {
-        // View'lere binding üzerinden erişiyoruz.
         if (isEmpty) {
             binding.recyclerViewFiles.visibility = View.GONE
             binding.layoutEmpty.visibility = View.VISIBLE
@@ -148,7 +205,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         try {
             startActivity(Intent.createChooser(shareIntent, "Dosyayı şununla paylaş:"))
             Log.d("MainActivity", "${file.fileName} paylaşılıyor.")
-        } catch (e: ActivityNotFoundException) {
+        } catch (_: ActivityNotFoundException) {
             Toast.makeText(this, "Bu işlemi yapacak bir uygulama bulunamadı.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -163,7 +220,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         }
         try {
             startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
+        } catch (_: ActivityNotFoundException) {
             Toast.makeText(this, "Bu dosya türünü açacak bir uygulama bulunamadı.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -181,7 +238,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         val fileToDelete = File(file.filePath)
         if (fileToDelete.exists() && fileToDelete.delete()) {
             Toast.makeText(this, "'${file.fileName}' silindi.", Toast.LENGTH_SHORT).show()
-            loadArchivedFiles()
+            loadAndCategorizeFiles()
         } else {
             Toast.makeText(this, "Hata: Dosya silinemedi.", Toast.LENGTH_SHORT).show()
         }

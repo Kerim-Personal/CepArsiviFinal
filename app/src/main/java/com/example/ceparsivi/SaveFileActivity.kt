@@ -41,17 +41,14 @@ class SaveFileActivity : AppCompatActivity() {
     }
 
     private fun showSaveDialog(fileUri: Uri, originalFileName: String) {
-        // --- YENİ EKLENEN BÖLÜM BAŞLANGICI ---
-
-        // 1. Dosya adını ve uzantısını ayırıyoruz.
+        // Dosya adını ve uzantısını ayır
         val fileExtension = originalFileName.substringAfterLast('.', "")
         val fileNameWithoutExtension = originalFileName.substringBeforeLast('.', originalFileName)
 
-        // 2. Dialog penceresi için özel bir görünüm oluşturuyoruz.
-        // Bu görünüm, dosya adı için bir EditText ve uzantı için bir TextView içerecek.
+        // Dialog için özel bir layout oluştur
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(50, 40, 50, 0) // Görünümün kenarlarına boşluk ekliyoruz.
+            setPadding(50, 40, 50, 0)
         }
 
         val editTextFileName = EditText(this).apply {
@@ -59,44 +56,49 @@ class SaveFileActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                1.0f // Genişliğin kalan tüm alanı kaplamasını sağlar.
+                1.0f
             )
         }
 
         val textViewExtension = TextView(this).apply {
             text = if (fileExtension.isNotEmpty()) ".$fileExtension" else ""
-            textSize = 16f // Metin boyutunu EditText ile uyumlu hale getiriyoruz.
+            textSize = 16f
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                leftMargin = 8 // Uzantının soluna boşluk ekliyoruz.
+                leftMargin = 8
             }
         }
 
-        // Oluşturduğumuz elemanları layout'a ekliyoruz.
         layout.addView(editTextFileName)
         if (fileExtension.isNotEmpty()) {
             layout.addView(textViewExtension)
         }
 
-        // --- YENİ EKLENEN BÖLÜM SONU ---
-
 
         AlertDialog.Builder(this)
             .setTitle("Dosyaya Bir İsim Ver")
-            // Eski EditText yerine yeni oluşturduğumuz özel layout'u kullanıyoruz.
             .setView(layout)
             .setPositiveButton("Kaydet") { dialog, _ ->
                 val newBaseName = editTextFileName.text.toString().trim()
                 if (newBaseName.isNotBlank()) {
-                    // 3. Yeni dosya adını, kullanıcının girdiği isim ve orijinal uzantı ile birleştiriyoruz.
                     val newName = if (fileExtension.isNotEmpty()) {
                         "$newBaseName.$fileExtension"
                     } else {
                         newBaseName
                     }
-                    copyFileToInternalStorage(fileUri, newName)
+
+                    if (copyFileToInternalStorage(fileUri, newName)) {
+                        Toast.makeText(this, "'$newName' adıyla kaydedildi!", Toast.LENGTH_LONG).show()
+                        // MainActivity'yi başlatarak listenin güncellenmesini tetikle
+                        val mainActivityIntent = Intent(this, MainActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        }
+                        startActivity(mainActivityIntent)
+                    } else {
+                        Toast.makeText(this, "Hata: Dosya kaydedilemedi.", Toast.LENGTH_LONG).show()
+                    }
                 } else {
                     Toast.makeText(this, "Lütfen geçerli bir isim girin.", Toast.LENGTH_SHORT).show()
                 }
@@ -113,8 +115,8 @@ class SaveFileActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun copyFileToInternalStorage(uri: Uri, newName: String) {
-        try {
+    private fun copyFileToInternalStorage(uri: Uri, newName: String): Boolean {
+        return try {
             val inputStream = contentResolver.openInputStream(uri)
             val outputDir = File(filesDir, "arsiv")
             if (!outputDir.exists()) {
@@ -129,11 +131,10 @@ class SaveFileActivity : AppCompatActivity() {
                 }
             }
             Log.d("SaveFileActivity", "Dosya başarıyla kaydedildi: ${outputFile.absolutePath}")
-            Toast.makeText(this, "'$newName' adıyla kaydedildi!", Toast.LENGTH_LONG).show()
-
+            true
         } catch (e: Exception) {
             Log.e("SaveFileActivity", "Dosya kopyalanamadı", e)
-            Toast.makeText(this, "Hata: Dosya kaydedilemedi.", Toast.LENGTH_LONG).show()
+            false
         }
     }
 

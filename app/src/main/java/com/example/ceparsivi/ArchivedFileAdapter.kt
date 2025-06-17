@@ -1,67 +1,101 @@
 package com.example.ceparsivi
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.ceparsivi.databinding.ItemFileBinding
+import com.example.ceparsivi.databinding.ItemHeaderBinding
+
+private const val VIEW_TYPE_HEADER = 0
+private const val VIEW_TYPE_FILE = 1
 
 class ArchivedFileAdapter(
     private val onItemClick: (ArchivedFile) -> Unit,
     private val onItemLongClick: (ArchivedFile) -> Unit
-) : ListAdapter<ArchivedFile, ArchivedFileAdapter.FileViewHolder>(FileDiffCallback()) {
+) : ListAdapter<ListItem, RecyclerView.ViewHolder>(ListItemDiffCallback()) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FileViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_file, parent, false)
-        return FileViewHolder(view)
+    override fun getItemViewType(position: Int): Int {
+        return when (getItem(position)) {
+            is ListItem.HeaderItem -> VIEW_TYPE_HEADER
+            is ListItem.FileItem -> VIEW_TYPE_FILE
+        }
     }
 
-    override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
-        holder.bind(getItem(position), onItemClick, onItemLongClick)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return when (viewType) {
+            VIEW_TYPE_HEADER -> {
+                val binding = ItemHeaderBinding.inflate(inflater, parent, false)
+                HeaderViewHolder(binding)
+            }
+            VIEW_TYPE_FILE -> {
+                val binding = ItemFileBinding.inflate(inflater, parent, false)
+                FileViewHolder(binding)
+            }
+            else -> throw IllegalArgumentException("Invalid view type")
+        }
     }
 
-    class FileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val fileNameTextView: TextView = itemView.findViewById(R.id.textViewFileName)
-        private val fileDateTextView: TextView = itemView.findViewById(R.id.textViewFileDate)
-        private val fileTypeImageView: ImageView = itemView.findViewById(R.id.imageViewFileType)
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val item = getItem(position)) {
+            is ListItem.HeaderItem -> (holder as HeaderViewHolder).bind(item)
+            is ListItem.FileItem -> (holder as FileViewHolder).bind(item.archivedFile, onItemClick, onItemLongClick)
+        }
+    }
 
-        fun bind(
-            file: ArchivedFile,
-            onItemClick: (ArchivedFile) -> Unit,
-            onItemLongClick: (ArchivedFile) -> Unit
-        ) {
-            fileNameTextView.text = file.fileName
-            // Bu satır artık hata vermeyecek çünkü 'savedDate' alanı artık mevcut.
-            fileDateTextView.text = file.savedDate
+    class FileViewHolder(private val binding: ItemFileBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(file: ArchivedFile, onClick: (ArchivedFile) -> Unit, onLongClick: (ArchivedFile) -> Unit) {
+            binding.textViewFileName.text = file.fileName
+            binding.textViewFileDate.text = file.dateAdded
+            binding.imageViewFileType.setImageResource(getFileIcon(file))
 
-            fileTypeImageView.setImageResource(when {
-                file.fileName.endsWith(".pdf", true) -> R.drawable.ic_file_pdf
-                file.fileName.endsWith(".jpg", true) ||
-                        file.fileName.endsWith(".jpeg", true) ||
-                        file.fileName.endsWith(".png", true) -> R.drawable.ic_file_image
-                file.fileName.endsWith(".doc", true) ||
-                        file.fileName.endsWith(".docx", true) -> R.drawable.ic_file_doc
-                else -> R.drawable.ic_file_generic
-            })
-
-            itemView.setOnClickListener { onItemClick(file) }
+            itemView.setOnClickListener { onClick(file) }
             itemView.setOnLongClickListener {
-                onItemLongClick(file)
+                onLongClick(file)
                 true
+            }
+        }
+
+        // --- GÜNCELLENDİ: Yeni ikonlar eklendi ---
+        private fun getFileIcon(file: ArchivedFile): Int {
+            return when (file.category) {
+                "Ofis Dosyaları" -> {
+                    when (file.fileName.substringAfterLast('.', "").lowercase()) {
+                        "pdf" -> R.drawable.ic_file_pdf
+                        "doc", "docx" -> R.drawable.ic_file_doc
+                        else -> R.drawable.ic_file_generic
+                    }
+                }
+                "Resim Dosyaları" -> R.drawable.ic_file_image
+                "Video Dosyaları" -> R.drawable.ic_file_video     // YENİ
+                "Ses Dosyaları" -> R.drawable.ic_file_audio       // YENİ
+                "Arşiv Dosyaları" -> R.drawable.ic_file_archive   // YENİ
+                else -> R.drawable.ic_file_generic
             }
         }
     }
 
-    class FileDiffCallback : DiffUtil.ItemCallback<ArchivedFile>() {
-        override fun areItemsTheSame(oldItem: ArchivedFile, newItem: ArchivedFile): Boolean {
-            return oldItem.filePath == newItem.filePath
+    class HeaderViewHolder(private val binding: ItemHeaderBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(header: ListItem.HeaderItem) {
+            binding.textViewHeader.text = header.title
         }
-        override fun areContentsTheSame(oldItem: ArchivedFile, newItem: ArchivedFile): Boolean {
-            return oldItem == newItem
+    }
+}
+
+class ListItemDiffCallback : DiffUtil.ItemCallback<ListItem>() {
+    override fun areItemsTheSame(oldItem: ListItem, newItem: ListItem): Boolean {
+        return when {
+            oldItem is ListItem.FileItem && newItem is ListItem.FileItem ->
+                oldItem.archivedFile.filePath == newItem.archivedFile.filePath
+            oldItem is ListItem.HeaderItem && newItem is ListItem.HeaderItem ->
+                oldItem.title == newItem.title
+            else -> false
         }
+    }
+
+    override fun areContentsTheSame(oldItem: ListItem, newItem: ListItem): Boolean {
+        return oldItem == newItem
     }
 }
