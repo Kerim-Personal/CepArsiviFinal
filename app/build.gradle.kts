@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-parcelize")
+    id("kotlin-kapt") // HATA GİDERİLDİ: Eksik olan kapt plugini buraya eklendi.
 }
 
 android {
@@ -34,7 +35,6 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
-    // Bu bloğu ekliyoruz
     buildFeatures {
         viewBinding = true
     }
@@ -46,9 +46,11 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-
-    // Bu satırı ekliyoruz
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+    // Glide Kütüphanesi
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
