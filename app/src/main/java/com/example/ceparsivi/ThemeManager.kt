@@ -3,6 +3,7 @@ package com.example.ceparsivi
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.edit
 
 object ThemeManager {
 
@@ -33,7 +34,7 @@ object ThemeManager {
     }
 
     fun setTheme(context: Context, theme: ThemeMode) {
-        getPreferences(context).edit().putString(KEY_THEME, theme.value).apply()
+        getPreferences(context).edit { putString(KEY_THEME, theme.value) }
         applyTheme(theme.value)
     }
 }

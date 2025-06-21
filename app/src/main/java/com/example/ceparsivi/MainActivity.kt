@@ -154,10 +154,10 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         val allFiles = readFilesFromDisk()
 
         val comparator = when (currentSortOrder) {
-            SortOrder.NAME_ASC -> compareBy<ArchivedFile> { it.fileName.lowercase() }
-            SortOrder.NAME_DESC -> compareByDescending<ArchivedFile> { it.fileName.lowercase() }
-            SortOrder.SIZE_ASC -> compareBy<ArchivedFile> { it.size }
-            SortOrder.SIZE_DESC -> compareByDescending<ArchivedFile> { it.size }
+            SortOrder.NAME_ASC -> compareBy { it.fileName.lowercase() }
+            SortOrder.NAME_DESC -> compareByDescending { it.fileName.lowercase() }
+            SortOrder.SIZE_ASC -> compareBy { it.size }
+            SortOrder.SIZE_DESC -> compareByDescending { it.size }
             SortOrder.DATE_DESC -> compareByDescending<ArchivedFile> { File(it.filePath).lastModified() }
         }
 

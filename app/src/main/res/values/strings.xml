@@ -18,4 +18,8 @@
     <string name="empty_view_icon_content_description">Boş Arşiv İkonu</string>
 
     <string name="file_preview_content_description">Dosya önizlemesi</string>
+    <string name="Ayarlar">Ayarlar</string>
+    <string name="dosya_tipi_konu">Dosya Tipi İkonu</string>
+
 </resources>
+
