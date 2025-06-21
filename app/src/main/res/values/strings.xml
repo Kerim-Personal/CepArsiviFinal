@@ -1,25 +1,46 @@
 <resources>
-    <string name="app_name">Smart Archive</string>
+    <string name="app_name">CepArsivi</string>
+    <string name="archive_button_text">Seçili Dosyaları Arşivle</string>
+    <string name="search_hint">Arşivde ara…</string>
+    <string name="sort_by_name">Ada Göre Sırala</string>
+    <string name="sort_by_date">Tarihe Göre Sırala</string>
+    <string name="view_as_list">Liste Olarak Görüntüle</string>
+    <string name="view_as_grid">Izgara Olarak Görüntüle</string>
+    <string name="delete_confirmation">Seçili dosyaları silmek istediğinizden emin misiniz?</string>
+    <string name="delete">Sil</string>
+    <string name="cancel">İptal</string>
+    <string name="file_details">Dosya Detayları</string>
+    <string name="file_name">Dosya Adı:</string>
+    <string name="file_path">Dosya Yolu:</string>
+    <string name="file_size">Dosya Boyutu:</string>
+    <string name="last_modified">Son Değiştirilme:</string>
+    <string name="delete_all">Tümünü Sil</string>
+    <string name="share">Paylaş</string>
+    <string name="info">Bilgi</string>
+    <string name="settings">Ayarlar</string>
+    <string name="dark_mode">Karanlık Mod</string>
+    <string name="light_mode">Aydınlık Mod</string>
+    <string name="system_default">Sistem Varsayılanı</string>
+    <string name="choose_theme">Tema Seçin</string>
+    <string name="no_files_found">Dosya bulunamadı.</string>
 
-    <string name="details_category">Kategori: %1$s</string>
-    <string name="details_date">Tarih: %1$s</string>
-    <string name="details_size">Boyut: %1$s</string>
+    <string name="empty_view_icon_content_description">Boş klasör ikonu</string>
+    <string name="empty_view_title">Henüz dosya yok</string>
+    <string name="empty_view_subtitle">Dosya eklemek için arşivle butonuna basın.</string>
+    <string name="Ayarlar">Ayarlar</string>
     <string name="action_share">Paylaş</string>
     <string name="action_delete">Sil</string>
-
+    <string name="dosya_tipi_konu">Dosya Tipi</string>
+    <string name="file_preview_content_description">Dosya önizlemesi</string>
+    <string name="menu_title_details">Detaylar</string>
     <string name="menu_title_toggle_view">Görünümü Değiştir</string>
     <string name="menu_title_sort">Sırala</string>
     <string name="menu_title_search">Ara</string>
-
-    <string name="menu_title_details">Detay</string>
-
-    <string name="empty_view_title">Arşivinizde Henüz Dosya Yok</string>
-    <string name="empty_view_subtitle">Başlamak için başka bir uygulamadan dosya paylaşın.</string>
-    <string name="empty_view_icon_content_description">Boş Arşiv İkonu</string>
-
-    <string name="file_preview_content_description">Dosya önizlemesi</string>
-    <string name="Ayarlar">Ayarlar</string>
-    <string name="dosya_tipi_konu">Dosya Tipi İkonu</string>
-
+    <string name="add_new_file">Yeni dosya ekle</string>
+    <string name="header_title">Başlık</string>
+    <string name="details_category">Kategori: %1$s</string>
+    <string name="details_date">Eklenme Tarihi: %1$s</string>
+    <string name="details_size">Boyut: %1$s</string>
+    <string name="setting_language_title">Dil</string>
+    <string name="setting_language_dialog_title">Dil Seçin</string>
 </resources>
-

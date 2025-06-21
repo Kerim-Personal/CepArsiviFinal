@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">CepArsivi</string>
+    <string name="archive_button_text">Archive Selected Files</string>
+    <string name="search_hint">Search in archive…</string>
+    <string name="sort_by_name">Sort by Name</string>
+    <string name="sort_by_date">Sort by Date</string>
+    <string name="view_as_list">View as List</string>
+    <string name="view_as_grid">View as Grid</string>
+    <string name="delete_confirmation">Are you sure you want to delete the selected files?</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="file_details">File Details</string>
+    <string name="file_name">File Name:</string>
+    <string name="file_path">File Path:</string>
+    <string name="file_size">File Size:</string>
+    <string name="last_modified">Last Modified:</string>
+    <string name="delete_all">Delete All</string>
+    <string name="share">Share</string>
+    <string name="info">Info</string>
+    <string name="settings">Settings</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="light_mode">Light Mode</string>
+    <string name="system_default">System Default</string>
+    <string name="choose_theme">Choose Theme</string>
+    <string name="no_files_found">No files found.</string>
+
+    <string name="empty_view_icon_content_description">Empty folder icon</string>
+    <string name="empty_view_title">No files yet</string>
+    <string name="empty_view_subtitle">Press the archive button to add files.</string>
+    <string name="Ayarlar">Settings</string>
+    <string name="action_share">Share</string>
+    <string name="action_delete">Delete</string>
+    <string name="dosya_tipi_konu">File Type</string>
+    <string name="file_preview_content_description">File preview</string>
+    <string name="menu_title_details">Details</string>
+    <string name="menu_title_toggle_view">Toggle View</string>
+    <string name="menu_title_sort">Sort</string>
+    <string name="menu_title_search">Search</string>
+    <string name="add_new_file">Add new file</string>
+    <string name="header_title">Header</string>
+    <string name="details_category">Category: %1$s</string>
+    <string name="details_date">Date Added: %1$s</string>
+    <string name="details_size">Size: %1$s</string>
+    <string name="setting_language_title">Language</string>
+    <string name="setting_language_dialog_title">Select Language</string>
+</resources>
