@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Cep Arsivi</string>
+    <string name="app_name">Smart Archive</string>
 
     <string name="details_category">Kategori: %1$s</string>
     <string name="details_date">Tarih: %1$s</string>
