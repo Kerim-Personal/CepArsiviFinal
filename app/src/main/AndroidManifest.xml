@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
+        android:name=".CepArsiviApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -14,6 +15,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CepArsivi"
         tools:targetApi="31">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -24,17 +26,19 @@
         </activity>
 
         <activity
-            android:name=".SaveFileActivity"
-            android:exported="true"
-            android:theme="@style/Theme.Transparent">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-        </activity>
+            android:name=".SettingsActivity"
+            android:label="Ayarlar"
+            android:theme="@style/Theme.Transparent" /> <activity
+        android:name=".SaveFileActivity"
+        android:exported="true"
+        android:theme="@style/Theme.Transparent">
+        <intent-filter>
+            <action android:name="android.intent.action.SEND" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="*/*" />
+        </intent-filter>
+    </activity>
 
-        <!-- YENİ EKLENEN BLOK BURASI -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
@@ -44,7 +48,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-        <!-- YENİ EKLENEN BLOĞUN SONU -->
 
     </application>
 

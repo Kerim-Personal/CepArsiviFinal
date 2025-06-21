@@ -19,6 +19,7 @@
             android:scaleType="centerCrop"
             android:background="#E0E0E0"
             tools:src="@drawable/ic_file_image"
+            app:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="@string/file_preview_content_description" /> <TextView
         android:id="@+id/textViewFileNameGrid"
         android:layout_width="match_parent"

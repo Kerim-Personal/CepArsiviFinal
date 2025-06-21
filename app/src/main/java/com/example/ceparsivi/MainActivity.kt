@@ -31,9 +31,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
     private lateinit var binding: ActivityMainBinding
     private lateinit var fileAdapter: ArchivedFileAdapter
     private var actionMode: ActionMode? = null
-    // --- DEĞİŞİKLİK --- Sıralama enum'ını daha anlaşılır yaptım.
     private var currentSortOrder = SortOrder.DATE_DESC
-
     private var currentViewMode = ViewMode.LIST
 
     private enum class SortOrder {
@@ -59,12 +57,15 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
         setupRecyclerView()
+
+        // Sağ alttaki ayarlar butonuna tıklama dinleyicisi ekle
+        binding.buttonSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
     }
 
-    // --- YENİLİK --- onResume'da direkt olarak Coroutine başlatıyoruz.
     override fun onResume() {
         super.onResume()
-        // Dosya listesini arayüzü kilitlemeden, arka planda güncelle.
         lifecycleScope.launch {
             updateFullList()
         }
@@ -108,7 +109,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         currentViewMode = if (currentViewMode == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST
         fileAdapter.viewMode = currentViewMode
         setupLayoutManager()
-        invalidateOptionsMenu() // Menü ikonunu güncellemek için
+        invalidateOptionsMenu()
     }
 
     private fun setupLayoutManager() {
@@ -118,13 +119,11 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
             val gridLayoutManager = GridLayoutManager(this, 3)
             gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                 override fun getSpanSize(position: Int): Int {
-                    // Başlıklar tam genişlik, dosya öğeleri 1 birim genişlik kaplar.
                     return if (position < fileAdapter.currentList.size && fileAdapter.getItemViewType(position) == 0) 3 else 1
                 }
             }
             binding.recyclerViewFiles.layoutManager = gridLayoutManager
         }
-        // Layout değişikliğinden sonra adaptörün haberdar edilmesi önemlidir.
         binding.recyclerViewFiles.adapter = fileAdapter
     }
 
@@ -142,7 +141,6 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
             .setTitle("Sıralama Ölçütü")
             .setSingleChoiceItems(sortOptions, currentSelection) { dialog, which ->
                 currentSortOrder = SortOrder.entries[which]
-                // --- YENİLİK --- Listeyi yine Coroutine ile güncelliyoruz.
                 lifecycleScope.launch {
                     updateFullList()
                 }
@@ -152,12 +150,9 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
             .show()
     }
 
-    // --- YENİLİK --- Bu fonksiyon artık 'suspend' yani bir yardımcı fonksiyon.
     private suspend fun updateFullList() {
-        // Diskten okuma (ağır iş)
         val allFiles = readFilesFromDisk()
 
-        // Sıralama ve filtreleme (hızlı işler, ama coroutine içinde kalması sorun değil)
         val comparator = when (currentSortOrder) {
             SortOrder.NAME_ASC -> compareBy<ArchivedFile> { it.fileName.lowercase() }
             SortOrder.NAME_DESC -> compareByDescending<ArchivedFile> { it.fileName.lowercase() }
@@ -184,15 +179,13 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         updateUI(finalList.isEmpty())
     }
 
-    // --- YENİLİK --- Bu fonksiyon da artık 'suspend' ve işini IO thread'inde yapıyor.
     private suspend fun readFilesFromDisk(): List<ArchivedFile> {
-        return withContext(Dispatchers.IO) { // Ağır işi arka plana taşıdık
+        return withContext(Dispatchers.IO) {
             val archiveDir = File(filesDir, "arsiv")
             val savedFiles = mutableListOf<ArchivedFile>()
             if (archiveDir.exists() && archiveDir.isDirectory) {
                 archiveDir.listFiles()?.filter { it.isFile }?.forEach { file ->
                     val lastModifiedDate = Date(file.lastModified())
-                    // Tarih formatlama UI ile ilgili olduğu için ana threade bırakılabilir ama burada kalması da sorun değil
                     val formattedDate = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(lastModifiedDate)
                     val category = getFileCategory(file.name)
                     savedFiles.add(ArchivedFile(file.name, file.absolutePath, formattedDate, category, file.length()))
@@ -220,15 +213,12 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
     }
 
     override fun onQueryTextChange(newText: String?): Boolean {
-        // --- YENİLİK --- Arama yaparken de arayüz donmasın.
         lifecycleScope.launch {
             updateFullList()
         }
         return true
     }
 
-    // --- (SETUP RECYCLERVIEW, TOGGLESELECTION, ACTIONMODE METODLARI SİZİN KODUNUZLA AYNI, DEĞİŞİKLİK YOK) ---
-    // ... Bu metodları olduğu gibi bırakabilirsiniz ...
     private fun setupRecyclerView() {
         fileAdapter = ArchivedFileAdapter(
             onItemClick = { file ->
@@ -301,15 +291,12 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         fileAdapter.clearSelections()
         actionMode = null
     }
-    // --- (YUKARIDAKİ METODLARDA DEĞİŞİKLİK YOK) ---
-
 
     private fun showMultiDeleteConfirmationDialog(filesToDelete: List<ArchivedFile>) {
         AlertDialog.Builder(this)
             .setTitle("${filesToDelete.size} Dosyayı Sil")
             .setMessage("Seçilen dosyaları kalıcı olarak silmek istediğinizden emin misiniz?")
             .setPositiveButton("Evet, Sil") { _, _ ->
-                // --- YENİLİK --- Silme işlemini de arka planda yapıyoruz.
                 lifecycleScope.launch {
                     deleteFiles(filesToDelete)
                     actionMode?.finish()
@@ -325,9 +312,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         bottomSheet.show(supportFragmentManager, "FileDetailsBottomSheet")
     }
 
-    // --- MÜKEMMEL --- Bu fonksiyonu zaten modern ve doğru bir şekilde yazmışsınız!
     private fun shareFiles(files: List<ArchivedFile>) {
-        // FileProvider kullanımı zaten doğru. Harika iş!
         if (files.isEmpty()) return
 
         val uris = ArrayList<Uri>()
@@ -346,7 +331,7 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
 
         val shareIntent = Intent().apply {
             action = if (uris.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE
-            type = "*/*" // Genel MIME türü
+            type = "*/*"
             if (uris.size == 1) {
                 putExtra(Intent.EXTRA_STREAM, uris.first())
             } else {
@@ -370,11 +355,9 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
         showMultiDeleteConfirmationDialog(listOf(file))
     }
 
-
-    // --- YENİLİK --- Dosya silme de bir I/O (disk) işlemidir. Bunu da 'suspend' yapıyoruz.
     private suspend fun deleteFiles(files: List<ArchivedFile>) {
         var deletedCount = 0
-        withContext(Dispatchers.IO) { // Arka plan thread'ine geçtik
+        withContext(Dispatchers.IO) {
             files.forEach {
                 val fileToDelete = File(it.filePath)
                 if (fileToDelete.exists() && fileToDelete.delete()) {
@@ -382,15 +365,10 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
                 }
             }
         }
-        // withContext bloğu bittikten sonra otomatik olarak ana thread'e döneriz.
         Toast.makeText(this, "$deletedCount dosya silindi.", Toast.LENGTH_SHORT).show()
-        // Silme sonrası listeyi yeniden yükle
         updateFullList()
     }
 
-
-    // --- (getfilecategory, onquerytextsubmit, updateuı, openfile METODLARI SİZİN KODUNUZLA AYNI, DEĞİŞİKLİK YOK) ---
-    // ... Bu metodları olduğu gibi bırakabilirsiniz ...
     private fun getFileCategory(fileName: String): String {
         return when (fileName.substringAfterLast('.', "").lowercase()) {
             "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt" -> "Ofis Dosyaları"
@@ -415,7 +393,6 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
     }
 
     private fun openFile(file: ArchivedFile) {
-        // Bu fonksiyon da FileProvider kullandığı için zaten doğru ve güvenli.
         val fileToOpen = File(file.filePath)
         if(!fileToOpen.exists()) {
             Toast.makeText(this, "Hata: Dosya bulunamadı.", Toast.LENGTH_SHORT).show()
@@ -433,6 +410,4 @@ class MainActivity : AppCompatActivity(), SearchView.OnQueryTextListener, Action
             Toast.makeText(this, "Bu dosya türünü açacak bir uygulama bulunamadı.", Toast.LENGTH_SHORT).show()
         }
     }
-    // --- (YUKARIDAKİ METODLARDA DEĞİŞİKLİK YOK) ---
-
 }
